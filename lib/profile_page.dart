@@ -1,5 +1,6 @@
-// profile_page.dart
+import 'package:ago_bin_vert/login_page.dart';
 import 'package:flutter/material.dart';
+import 'custom_drawer.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -7,23 +8,43 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Profile',
-          style: TextStyle(color: Colors.green),
-        ),
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(
+              Icons.menu,
+              color: Color(0xFF77BA69),
+              size: 30,
+            ),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.green),
-            onPressed: () {},
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              },
+              child: CircleAvatar(
+                backgroundColor: Color(0xFFE0F0E0),
+                child: Icon(
+                  Icons.exit_to_app,
+                  color: Color(0xFF77BA69),
+                ),
+              ),
+            ),
           ),
         ],
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.green),
-          onPressed: () {},
-        ),
+        title: Text(''),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
