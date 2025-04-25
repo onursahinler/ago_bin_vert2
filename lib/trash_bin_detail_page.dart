@@ -110,6 +110,7 @@ class TrashBinDetailPage extends StatelessWidget {
                             width: 250,
                             height: 250,
                             child: Stack(
+                              alignment: Alignment.center,
                               children: [
                                 // Trash bin representation
                                 Container(
@@ -124,6 +125,7 @@ class TrashBinDetailPage extends StatelessWidget {
                                 // Fill level indicator
                                 Positioned(
                                   bottom: 0,
+                                  left: 15, // (250 - 220) / 2 = 15
                                   child: Container(
                                     width: 220,
                                     height: 220 * (fillPercentage / 100),
