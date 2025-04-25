@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -9,9 +11,14 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLogin = true;
+  final TextEditingController _nameController = TextEditingController();
+  String? _errorMessage;
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -42,6 +49,51 @@ class _LoginPageState extends State<LoginPage> {
                         color: Colors.grey,
                       ),
                       SizedBox(height: 40),
+                      // Title
+                      Text(
+                        _isLogin ? 'Log In' : 'Create Account',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF77BA69),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      
+                      // Error message
+                      if (_errorMessage != null)
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          margin: EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red.shade800),
+                          ),
+                        ),
+                      
+                      // Name field (only for registration)
+                      if (!_isLogin)
+                        Container(
+                          margin: EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Color(0xFF77BA69)),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: TextField(
+                            controller: _nameController,
+                            textAlign: TextAlign.left,
+                            decoration: InputDecoration(
+                              hintText: 'Your Name',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        
                       // Email field
                       Container(
                         decoration: BoxDecoration(
@@ -50,6 +102,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: TextField(
                           controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           textAlign: TextAlign.left,
                           decoration: InputDecoration(
                             hintText: 'E-mail',
@@ -59,6 +112,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       SizedBox(height: 20),
+                      
                       // Password field
                       Container(
                         decoration: BoxDecoration(
@@ -88,26 +142,50 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       SizedBox(height: 30),
-                      // Login button
+                      
+                      // Login/Register button
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(context, '/trash_bins');
-                          },
+                          onPressed: authService.isLoading 
+                            ? null 
+                            : () => _performAuth(authService),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFF77BA69),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: Text(
-                            'Log In',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                            ),
+                          child: authService.isLoading
+                            ? CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                                _isLogin ? 'Log In' : 'Register',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 20),
+                      
+                      // Toggle login/register
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isLogin = !_isLogin;
+                            _errorMessage = null;
+                          });
+                        },
+                        child: Text(
+                          _isLogin 
+                            ? 'Don\'t have an account? Register' 
+                            : 'Already have an account? Login',
+                          style: TextStyle(
+                            color: Color(0xFF77BA69),
+                            fontSize: 16,
                           ),
                         ),
                       ),
@@ -136,11 +214,74 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  
+  void _performAuth(AuthService authService) async {
+    setState(() {
+      _errorMessage = null;
+    });
+    
+    if (_isLogin) {
+      // Login flow
+      if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+        setState(() {
+          _errorMessage = 'Please enter email and password';
+        });
+        return;
+      }
+      
+      final error = await authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+      
+      if (error != null) {
+        setState(() {
+          _errorMessage = error;
+        });
+        return;
+      }
+      
+      Navigator.pushReplacementNamed(context, '/trash_bins');
+    } else {
+      // Register flow
+      if (_emailController.text.isEmpty || 
+          _passwordController.text.isEmpty ||
+          _nameController.text.isEmpty) {
+        setState(() {
+          _errorMessage = 'Please fill all fields';
+        });
+        return;
+      }
+      
+      if (_passwordController.text.length < 6) {
+        setState(() {
+          _errorMessage = 'Password must be at least 6 characters';
+        });
+        return;
+      }
+      
+      final error = await authService.register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+      );
+      
+      if (error != null) {
+        setState(() {
+          _errorMessage = error;
+        });
+        return;
+      }
+      
+      Navigator.pushReplacementNamed(context, '/trash_bins');
+    }
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 }
