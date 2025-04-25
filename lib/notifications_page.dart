@@ -24,11 +24,16 @@ class NotificationsPage extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Color(0xFFE0F0E0),
-              child: Icon(
-                Icons.person,
-                color: Color(0xFF77BA69),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, '/profile');
+              },
+              child: CircleAvatar(
+                backgroundColor: Color(0xFFE0F0E0),
+                child: Icon(
+                  Icons.person,
+                  color: Color(0xFF77BA69),
+                ),
               ),
             ),
           ),

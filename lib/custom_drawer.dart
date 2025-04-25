@@ -25,28 +25,20 @@ class CustomDrawer extends StatelessWidget {
             children: [
               // Drawer header with close button
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 30),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 50),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Container(), // Empty container for alignment
                     IconButton(
                       icon: Icon(Icons.close, color: Color(0xFF77BA69), size: 30),
                       onPressed: () {
                         Navigator.pop(context);
                       },
                     ),
-                    CircleAvatar(
-                      backgroundColor: Color(0xFFE0F0E0),
-                      child: Icon(
-                        Icons.person,
-                        color: Color(0xFF77BA69),
-                      ),
-                    ),
                   ],
                 ),
               ),
-              SizedBox(height: 50),
+              SizedBox(height: 20),
               // Menu items
               _buildMenuItem(
                   context: context,
@@ -98,7 +90,17 @@ class CustomDrawer extends StatelessWidget {
       onTap: () {
         Navigator.pop(context); // Close drawer
         if (ModalRoute.of(context)?.settings.name != route) {
-          Navigator.pushReplacementNamed(context, route);
+          if (route == '/map_view') {
+            // Show a message that map view is coming soon
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Map view feature is coming soon!'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } else {
+            Navigator.pushNamed(context, route);
+          }
         }
       },
       child: Padding(

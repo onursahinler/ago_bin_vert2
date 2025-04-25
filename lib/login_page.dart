@@ -50,9 +50,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: TextField(
                           controller: _emailController,
+                          textAlign: TextAlign.left,
                           decoration: InputDecoration(
                             hintText: 'E-mail',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                             border: InputBorder.none,
                           ),
                         ),
@@ -67,9 +68,10 @@ class _LoginPageState extends State<LoginPage> {
                         child: TextField(
                           controller: _passwordController,
                           obscureText: _obscureText,
+                          textAlign: TextAlign.left,
                           decoration: InputDecoration(
                             hintText: 'Password',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: Icon(
