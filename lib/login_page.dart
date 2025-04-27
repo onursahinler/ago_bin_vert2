@@ -49,17 +49,7 @@ class _LoginPageState extends State<LoginPage> {
                         color: Colors.grey,
                       ),
                       SizedBox(height: 40),
-                      // Title
-                      Text(
-                        _isLogin ? 'Log In' : 'Create Account',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF77BA69),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      
+
                       // Error message
                       if (_errorMessage != null)
                         Container(
@@ -170,25 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       
                       SizedBox(height: 20),
-                      
-                      // Toggle login/register
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLogin = !_isLogin;
-                            _errorMessage = null;
-                          });
-                        },
-                        child: Text(
-                          _isLogin 
-                            ? 'Don\'t have an account? Register' 
-                            : 'Already have an account? Login',
-                          style: TextStyle(
-                            color: Color(0xFF77BA69),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+
                     ],
                   ),
                 ),

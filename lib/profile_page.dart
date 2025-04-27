@@ -128,14 +128,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    userData != null ? userData['name'] ?? 'User' : 'Loading...',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Text(
                     authService.user?.email ?? 'email@example.com',
                     style: TextStyle(
                       fontSize: 14,
