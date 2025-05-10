@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:provider/provider.dart';
-import '../services/bluetooth_service.dart';
 
 class PreviousDevicesWidget extends StatelessWidget {
   final List<Map<String, String>> previousDevices;
-  final Function onConnectPressed;
+  final Function(String) onConnectPressed;
   final bool isConnected;
   
   const PreviousDevicesWidget({
@@ -81,13 +78,13 @@ class PreviousDevicesWidget extends StatelessWidget {
                 ),
                 subtitle: Text('Last connected: $formattedDate'),
                 trailing: TextButton(
-                  onPressed: isConnected ? null : () => onConnectPressed(device['id']),
+                  onPressed: isConnected ? null : () => onConnectPressed(device['id']!),
                   child: Text('Connect'),
                   style: TextButton.styleFrom(
                     foregroundColor: isConnected ? Colors.grey : Color(0xFF77BA69),
                   ),
                 ),
-                onTap: isConnected ? null : () => onConnectPressed(device['id']),
+                onTap: isConnected ? null : () => onConnectPressed(device['id']!),
               );
             },
           ),

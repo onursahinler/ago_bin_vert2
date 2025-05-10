@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_bluetooth_serial_ble/flutter_bluetooth_serial_ble.dart' as fb;
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'storage_service.dart';
 import 'log_service.dart';
 
@@ -30,279 +31,304 @@ class TrashBin {
 }
 
 class BluetoothManager extends ChangeNotifier {
-  BluetoothDevice? _device;
-  BluetoothCharacteristic? _characteristic;
-  StreamSubscription<List<int>>? _subscription;
+  final fb.FlutterBluetoothSerial _bluetooth = fb.FlutterBluetoothSerial.instance;
+  fb.BluetoothDevice? _device;
+  fb.BluetoothConnection? _connection;
+  StreamSubscription<Uint8List>? _dataSubscription;
+
   bool _isConnected = false;
   bool _isReconnecting = false;
   DateTime? _lastDataReceived;
   int _reconnectAttempts = 0;
   Timer? _connectionWatchdog;
-  
-  // Trash bin data from the sensor
+
   TrashBin? _sensorTrashBin;
   String _connectionStatus = 'Not connected';
-  
-  // Getters
+
   TrashBin? get sensorTrashBin => _sensorTrashBin;
   bool get isConnected => _isConnected;
   bool get isReconnecting => _isReconnecting;
-  BluetoothDevice? get connectedDevice => _device;
+  fb.BluetoothDevice? get connectedDevice => _device;
   String get connectionStatus => _connectionStatus;
   DateTime? get lastDataReceived => _lastDataReceived;
-  
-  // Connect to a device
-  Future<bool> connectToDevice(BluetoothDevice device) async {
+
+  Future<bool> connectToDevice(fb.BluetoothDevice device) async {
+    if (_isConnected && _connection?.isConnected == true && _device?.address == device.address) {
+      _setConnectionStatus('Already connected to ${device.name ?? device.address}');
+      return true;
+    }
+    if (_isConnected) {
+      await disconnect(silent: true);
+    }
+
+    _setConnectionStatus('Connecting to ${device.name ?? device.address}...');
+    _isReconnecting = false;
+    _reconnectAttempts = 0;
+
     try {
-      _setConnectionStatus('Connecting to ${device.name}...');
-      _isReconnecting = false;
-      _reconnectAttempts = 0;
-      
-      await device.connect(timeout: Duration(seconds: 10));
+      print('Attempting to connect to ${device.address} using BluetoothManager');
+
+      // Fix: Use BluetoothConnection.toAddress to get the connection object
+      _connection = await fb.BluetoothConnection.toAddress(device.address);
+      print('Connection successful to ${device.address}');
+
+      await StorageService.saveConnectedDevice(
+        device.address,
+        device.name ?? "Unknown Device"
+      );
+
       _device = device;
       _isConnected = true;
-      _setConnectionStatus('Connected to ${device.name}');
-      
-      // Save the connected device to history
-      await StorageService.saveConnectedDevice(
-        device.id.toString(),
-        device.name.isNotEmpty ? device.name : "Unknown HC-05 Device"
-      );
-      
-      // Discover services
-      List<BluetoothService> services = await device.discoverServices();
-      
-      // Find the UART service on HC-05 (standard SPP UUID)
-      bool foundService = false;
-      for (BluetoothService service in services) {
-        for (BluetoothCharacteristic characteristic in service.characteristics) {
-          // Look for a characteristic that can notify us
-          if (characteristic.properties.notify || characteristic.properties.indicate) {
-            _characteristic = characteristic;
-            await _characteristic!.setNotifyValue(true);
-            
-            // Subscribe to notifications
-            _subscription = _characteristic!.lastValueStream.listen(_onDataReceived);
-            foundService = true;
-            break;
-          }
-        }
-        if (foundService) break;
-      }
-      
-      if (!foundService) {
-        _setConnectionStatus('Could not find proper characteristic for data transfer');
-        return false;
-      }
-      
-      // Start the connection watchdog
+      _setConnectionStatus('Connected to ${device.name ?? device.address}');
+
+      _dataSubscription = _connection?.input?.listen(_onDataReceived,
+          onDone: () {
+            _setConnectionStatus("Disconnected by remote peer");
+            _handleDisconnection();
+          },
+          onError: (error) {
+            _setConnectionStatus("Receive error: $error");
+            _handleDisconnection();
+          });
+
       _startConnectionWatchdog();
-      
       notifyListeners();
       return true;
     } catch (e) {
       _setConnectionStatus('Error connecting: $e');
       _isConnected = false;
+      _connection = null;
+      _device = null;
       notifyListeners();
-      return false;
-    }
-  }
-  
-  // Start a timer to check for connection issues
-  void _startConnectionWatchdog() {
-    _connectionWatchdog?.cancel();
-    _connectionWatchdog = Timer.periodic(Duration(seconds: 30), (timer) {
-      if (_isConnected && _lastDataReceived != null) {
-        // Check if we haven't received data for more than 60 seconds
-        if (DateTime.now().difference(_lastDataReceived!).inSeconds > 60) {
-          print('No data received for 60 seconds, attempting reconnect');
-          _attemptReconnect();
-        }
-      }
-    });
-  }
-  
-  // Attempt to reconnect to the device
-  Future<void> _attemptReconnect() async {
-    if (_isReconnecting || _reconnectAttempts > 3 || _device == null) return;
-    
-    _isReconnecting = true;
-    _reconnectAttempts++;
-    _setConnectionStatus('Connection lost. Attempting reconnect (${_reconnectAttempts}/3)...');
-    notifyListeners();
-    
-    try {
-      await disconnect(silent: true);
-      await Future.delayed(Duration(seconds: 2));
-      bool success = await connectToDevice(_device!);
-      if (success) {
-        _reconnectAttempts = 0;
-        _setConnectionStatus('Reconnected successfully');
-      } else {
-        _setConnectionStatus('Reconnect attempt failed');
-      }
-    } catch (e) {
-      _setConnectionStatus('Reconnect error: $e');
-    } finally {
-      _isReconnecting = false;
-      notifyListeners();
-    }
-  }
-  
-  // Set connection status with timestamp
-  void _setConnectionStatus(String status) {
-    _connectionStatus = status;
-    LogService.log(status, type: 'info');
-    notifyListeners();
-  }
-  
-  // Disconnect from device
-  Future<void> disconnect({bool silent = false}) async {
-    if (_device != null) {
-      try {
-        if (!silent) {
-          _setConnectionStatus('Disconnecting...');
-        }
-        
-        _subscription?.cancel();
-        _connectionWatchdog?.cancel();
-        
-        await _device!.disconnect();
-        _device = null;
-        _characteristic = null;
-        _isConnected = false;
-        
-        if (!silent) {
-          _setConnectionStatus('Disconnected');
-        }
-        
-        notifyListeners();
-      } catch (e) {
-        _setConnectionStatus('Error disconnecting: $e');
-      }
-    }
-  }
-  
-  // Process data received from the HC-05
-  void _onDataReceived(List<int> data) {
-    try {
-      // Update last data received timestamp
-      _lastDataReceived = DateTime.now();
-      
-      // Convert bytes to string
-      final String message = utf8.decode(data);
-      print('Received data: $message');
-      
-      // Parse fill level (Format: "Fill : x.xx %")
-      RegExp regExp = RegExp(r'Fill\s*:\s*(\d+\.\d+)\s*%');
-      final match = regExp.firstMatch(message);
-      
-      if (match != null) {
-        final fillLevel = double.parse(match.group(1) ?? '0.0');
-        final now = DateTime.now();
-        final timeString = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-        
-        // Create a trash bin with the data
-        _sensorTrashBin = TrashBin(
-          id: 999, // Special ID for sensor bin
-          location: 'HC-05 Sensor',
-          fillPercentage: fillLevel,
-          lastUpdated: timeString,
-        );
-        
-        // Log the received data
-        LogService.log('Received fill level: ${fillLevel.toStringAsFixed(2)}%', type: 'info');
-        
-        // Reset reconnect attempts on successful data
-        _reconnectAttempts = 0;
-        
-        // Notify listeners to update UI
-        notifyListeners();
-      }
-    } catch (e) {
-      print('Error processing data: $e');
-    }
-  }
-  
-  // Method to send data to the device
-  Future<bool> sendData(String data) async {
-    if (!_isConnected || _characteristic == null) {
-      return false;
-    }
-    
-    try {
-      List<int> bytes = utf8.encode(data);
-      await _characteristic!.write(bytes);
-      return true;
-    } catch (e) {
-      print('Error sending data: $e');
-      return false;
-    }
-  }
-  
-  // Method to manually create a test bin (for testing without actual connection)
-  void createTestBin(double fillLevel) {
-    final now = DateTime.now();
-    final timeString = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    
-    _sensorTrashBin = TrashBin(
-      id: 999,
-      location: 'Test HC-05 Sensor',
-      fillPercentage: fillLevel,
-      lastUpdated: timeString,
-    );
-    
-    notifyListeners();
-  }
-  
-  // Method to try to connect to a previously connected device
-  Future<bool> tryConnectToPreviousDevice() async {
-    try {
-      final previousDevices = await StorageService.getConnectedDevices();
-      if (previousDevices.isEmpty) {
-        return false;
-      }
-      
-      // Try to connect to the most recently connected device first
-      for (var deviceInfo in previousDevices) {
-        _setConnectionStatus('Trying to connect to previously paired device: ${deviceInfo['name']}...');
-        
-        try {
-          // Convert the ID string back to a DeviceIdentifier
-          final deviceId = DeviceIdentifier(deviceInfo['id']!);
-          final List<BluetoothDevice> knownDevices = await FlutterBluePlus.systemDevices([]);
-          
-          BluetoothDevice? matchingDevice;
-          for (var device in knownDevices) {
-            if (device.id == deviceId) {
-              matchingDevice = device;
-              break;
-            }
-          }
-          
-          if (matchingDevice != null) {
-            final success = await connectToDevice(matchingDevice);
-            if (success) {
-              return true;
-            }
-          }
-        } catch (e) {
-          print('Error connecting to previous device: $e');
-          continue; // Try the next device
-        }
-      }
-      
-      return false;
-    } catch (e) {
-      print('Error in tryConnectToPreviousDevice: $e');
       return false;
     }
   }
 
+  void _startConnectionWatchdog() {
+    _connectionWatchdog?.cancel();
+    _connectionWatchdog = Timer.periodic(Duration(seconds: 30), (timer) {
+      if (_isConnected && _lastDataReceived != null) {
+        if (DateTime.now().difference(_lastDataReceived!).inSeconds > 60) {
+          print('No data received for 60 seconds, attempting reconnect');
+          _attemptReconnect();
+        }
+      } else if (_isConnected && _lastDataReceived == null && _connection?.isConnected == true) {
+        print("Connected but no data received yet.");
+      } else if (!_isConnected && !_isReconnecting) {
+        _connectionWatchdog?.cancel();
+      }
+    });
+  }
+
+  void _handleDisconnection() {
+    _isConnected = false;
+    _dataSubscription?.cancel();
+    _dataSubscription = null;
+    _connectionWatchdog?.cancel();
+    _connection = null;
+    if (!_isReconnecting) {
+      _setConnectionStatus('Disconnected');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _attemptReconnect() async {
+    if (_isReconnecting || _reconnectAttempts >= 3 || _device == null) {
+      if (_reconnectAttempts >= 3) _setConnectionStatus("Max reconnect attempts reached.");
+      return;
+    }
+
+    _isReconnecting = true;
+    _reconnectAttempts++;
+    _setConnectionStatus('Connection lost. Attempting reconnect (${_reconnectAttempts}/3) to ${_device?.name ?? _device?.address}...');
+    notifyListeners();
+
+    await disconnect(silent: true);
+    await Future.delayed(Duration(seconds: 2));
+
+    if (_device != null) {
+      bool success = await connectToDevice(_device!);
+      if (success) {
+        _reconnectAttempts = 0;
+        _setConnectionStatus('Reconnected successfully to ${_device?.name ?? _device?.address}');
+      } else {
+        _setConnectionStatus('Reconnect attempt ${_reconnectAttempts} failed for ${_device?.name ?? _device?.address}');
+        if (_reconnectAttempts >= 3) {
+          _setConnectionStatus("Failed to reconnect after 3 attempts.");
+          _device = null;
+        }
+      }
+    } else {
+      _setConnectionStatus("Cannot reconnect, device information lost.");
+    }
+
+    _isReconnecting = false;
+    notifyListeners();
+  }
+
+  void _setConnectionStatus(String status) {
+    _connectionStatus = status;
+    LogService.log(status, type: 'info');
+    print("BluetoothManager Status: $status");
+    notifyListeners();
+  }
+
+  Future<void> disconnect({bool silent = false}) async {
+    if (!silent) {
+      _setConnectionStatus('Disconnecting...');
+    }
+
+    _isReconnecting = false;
+    _reconnectAttempts = 0;
+
+    _dataSubscription?.cancel();
+    _dataSubscription = null;
+    _connectionWatchdog?.cancel();
+    _connectionWatchdog = null;
+
+    try {
+      await _connection?.close();
+    } catch (e) {
+      if (!silent) _setConnectionStatus('Error during connection close: $e');
+      print('Error during connection close: $e');
+    } finally {
+      _connection = null;
+      _isConnected = false;
+      if (!silent) {
+        _setConnectionStatus('Disconnected');
+      }
+      notifyListeners();
+    }
+  }
+
+  void _onDataReceived(Uint8List data) {
+    _lastDataReceived = DateTime.now();
+    try {
+      final String message = utf8.decode(data);
+      LogService.log('Received raw data: $message', type: 'debug');
+      print('Received data: $message');
+
+      RegExp regExp = RegExp(r'Fill\s*:\s*(\d+\.?\d*)\s*%');
+      final match = regExp.firstMatch(message);
+
+      if (match != null) {
+        final fillLevelString = match.group(1);
+        if (fillLevelString != null) {
+          final fillLevel = double.tryParse(fillLevelString) ?? 0.0;
+          final now = DateTime.now();
+          final timeString = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+          _sensorTrashBin = TrashBin(
+            id: 999,
+            location: _device?.name ?? _device?.address ?? 'HC-05 Sensor',
+            fillPercentage: fillLevel,
+            lastUpdated: timeString,
+          );
+
+          LogService.log('Parsed fill level: ${fillLevel.toStringAsFixed(2)}%', type: 'info');
+          _reconnectAttempts = 0;
+          _setConnectionStatus('Data received. Fill: ${fillLevel.toStringAsFixed(2)}%');
+        } else {
+          LogService.log('Failed to parse fill level from: $message', type: 'warning');
+        }
+      } else {
+        LogService.log('Received data does not match expected format: $message', type: 'warning');
+      }
+    } catch (e) {
+      LogService.log('Error processing data: $e. Raw: ${String.fromCharCodes(data)}', type: 'error');
+      print('Error processing data: $e');
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> sendData(String data) async {
+    if (!_isConnected || _connection == null || _connection?.isConnected != true) {
+      _setConnectionStatus('Cannot send data: Not connected.');
+      return false;
+    }
+
+    try {
+      Uint8List bytesToSend = Uint8List.fromList(utf8.encode(data + "\r\n"));
+      _connection?.output.add(bytesToSend);
+      await _connection?.output.allSent;
+      LogService.log('Sent data: $data', type: 'info');
+      return true;
+    } catch (e) {
+      _setConnectionStatus('Error sending data: $e');
+      LogService.log('Error sending data: $e', type: 'error');
+      return false;
+    }
+  }
+
+  void createTestBin(double fillLevel) {
+    final now = DateTime.now();
+    final timeString = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    String deviceLocation = 'Test HC-05 Sensor'; // Default
+    if (_device != null) {
+      // Use connected device's name if available, otherwise its address
+      deviceLocation = _device!.name != null && _device!.name!.isNotEmpty ? _device!.name! : _device!.address;
+    }
+
+    _sensorTrashBin = TrashBin(
+      id: 999,
+      location: deviceLocation, // Use dynamic location
+      fillPercentage: fillLevel,
+      lastUpdated: timeString,
+    );
+
+    LogService.log('Created test bin data: ${deviceLocation} - Fill: ${fillLevel.toStringAsFixed(2)}%', type: 'info');
+    notifyListeners();
+  }
+
+  Future<bool> tryConnectToPreviousDevice() async {
+    final previousDeviceMaps = await StorageService.getConnectedDevices();
+    if (previousDeviceMaps.isEmpty) {
+      _setConnectionStatus("No previous devices found.");
+      return false;
+    }
+
+    for (var deviceInfo in previousDeviceMaps) {
+      final deviceName = deviceInfo['name'];
+      final deviceAddress = deviceInfo['id'];
+
+      if (deviceAddress == null) continue;
+
+      _setConnectionStatus('Trying to connect to previously paired: ${deviceName ?? deviceAddress}...');
+      notifyListeners();
+
+      try {
+        List<fb.BluetoothDevice> bondedDevices = await _bluetooth.getBondedDevices();
+        fb.BluetoothDevice? targetDevice;
+        for (var bonded in bondedDevices) {
+          if (bonded.address == deviceAddress) {
+            targetDevice = bonded;
+            break;
+          }
+        }
+        targetDevice ??= fb.BluetoothDevice(address: deviceAddress, name: deviceName);
+
+        final success = await connectToDevice(targetDevice);
+        if (success) {
+          return true;
+        }
+      } catch (e) {
+        LogService.log('Error connecting to previous device $deviceAddress: $e', type: 'error');
+        _setConnectionStatus('Failed to connect to $deviceAddress. Trying next...');
+        continue;
+      }
+    }
+
+    _setConnectionStatus("Couldn't connect to any previous devices.");
+    return false;
+  }
+
   @override
   void dispose() {
-    _subscription?.cancel();
+    _dataSubscription?.cancel();
     _connectionWatchdog?.cancel();
+    _connection?.close();
     super.dispose();
   }
 }
