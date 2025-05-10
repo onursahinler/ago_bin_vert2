@@ -6,7 +6,10 @@ import 'trash_bins_list_page.dart';
 import 'notifications_page.dart';
 // import 'trash_bins_map_page.dart';
 import 'profile_page.dart';
+import 'settings_page.dart';
+import 'bluetooth_log_page.dart';
 import 'services/auth_service.dart';
+import 'services/bluetooth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +34,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => BluetoothManager()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -44,8 +48,10 @@ class MyApp extends StatelessWidget {
           '/': (context) => LoginPage(),
           '/trash_bins': (context) => TrashBinsListPage(),
           '/notifications': (context) => NotificationsPage(),
-          // '/map_view': (context) => TrashBinsMapPage(),
+          '/map_view': (context) => NotificationsPage(), // Placeholder until map is implemented
           '/profile': (context) => ProfilePage(),
+          '/settings': (context) => SettingsPage(),
+          '/bluetooth_logs': (context) => BluetoothLogPage(),
         },
       ),
     );

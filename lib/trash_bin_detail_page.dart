@@ -6,6 +6,7 @@ class TrashBinDetailPage extends StatelessWidget {
   final Color statusColor;
   final int fillPercentage;
   final String lastUpdated;
+  final bool isSensor;
 
   const TrashBinDetailPage({
     Key? key,
@@ -14,6 +15,7 @@ class TrashBinDetailPage extends StatelessWidget {
     required this.statusColor,
     required this.fillPercentage,
     required this.lastUpdated,
+    this.isSensor = false,
   }) : super(key: key);
 
   @override
@@ -78,17 +80,29 @@ class TrashBinDetailPage extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                          SizedBox(width: 20),
-                          Column(
+                          SizedBox(width: 20),                              Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Trash Bin #$binNumber',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black54,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    isSensor ? 'HC-05 Sensor Bin' : 'Trash Bin #$binNumber',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  if (isSensor)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8.0),
+                                      child: Icon(
+                                        Icons.bluetooth,
+                                        color: Colors.blue,
+                                        size: 18,
+                                      ),
+                                    ),
+                                ],
                               ),
                               SizedBox(height: 4),
                               Text(
