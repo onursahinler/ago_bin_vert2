@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'trash_bin_detail_page.dart';
 import 'custom_drawer.dart';
 import 'profile_page.dart';
+import 'services/bluetooth_service.dart';
+import 'widgets/bluetooth_status_widget.dart';
 
 class TrashBinsListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Get Bluetooth sensor data
+    final bluetoothManager = Provider.of<BluetoothManager>(context);
+    final sensorBin = bluetoothManager.sensorTrashBin;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -70,6 +76,26 @@ class TrashBinsListPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: ListView(
                 children: [
+                  // Bluetooth status indicator
+                  BluetoothStatusWidget(),
+                  
+                  // HC-05 Sensor Bin (if connected and data available)
+                  if (sensorBin != null)
+                    Column(
+                      children: [
+                        _buildTrashBinItem(
+                          context: context,
+                          number: sensorBin.id,
+                          location: sensorBin.location,
+                          color: sensorBin.statusColor,
+                          fillPercentage: sensorBin.fillPercentage.toInt(),
+                          lastUpdated: sensorBin.lastUpdated,
+                          isSensor: true,
+                        ),
+                        SizedBox(height: 15),
+                      ],
+                    ),
+                    
                   // Trash Bin #1
                   _buildTrashBinItem(
                     context: context,
@@ -132,6 +158,7 @@ class TrashBinsListPage extends StatelessWidget {
     required Color color,
     required int fillPercentage,
     required String lastUpdated,
+    bool isSensor = false,
   }) {
     return GestureDetector(
       onTap: () {
@@ -144,6 +171,7 @@ class TrashBinsListPage extends StatelessWidget {
               statusColor: color,
               fillPercentage: fillPercentage,
               lastUpdated: lastUpdated,
+              isSensor: isSensor,
             ),
           ),
         );
@@ -172,13 +200,25 @@ class TrashBinsListPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Trash Bin #$number',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          isSensor ? 'HC-05 Sensor Bin' : 'Trash Bin #$number',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (isSensor)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.bluetooth,
+                              color: Colors.blue,
+                              size: 18,
+                            ),
+                          ),
+                      ],
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -188,6 +228,27 @@ class TrashBinsListPage extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Fill: $fillPercentage%',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Last updated: $lastUpdated',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

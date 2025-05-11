@@ -60,6 +60,20 @@ class CustomDrawer extends StatelessWidget {
                   title: 'Notifications',
                   route: '/notifications'
               ),
+              SizedBox(height: 20),
+              _buildMenuItem(
+                  context: context,
+                  icon: Icons.arrow_forward_ios,
+                  title: 'Settings',
+                  route: '/settings'
+              ),
+              SizedBox(height: 20),
+              _buildMenuItem(
+                  context: context,
+                  icon: Icons.arrow_forward_ios,
+                  title: 'Bluetooth Logs',
+                  route: '/bluetooth_logs'
+              ),
               Spacer(),
               // App name at bottom
               Padding(
