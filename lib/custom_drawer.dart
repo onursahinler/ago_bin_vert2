@@ -102,19 +102,9 @@ class CustomDrawer extends StatelessWidget {
   }) {
     return InkWell(
       onTap: () {
-        Navigator.pop(context); // Close drawer
+        Navigator.pop(context);
         if (ModalRoute.of(context)?.settings.name != route) {
-          if (route == '/map_view') {
-            // Show a message that map view is coming soon
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Map view feature is coming soon!'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          } else {
-            Navigator.pushNamed(context, route);
-          }
+          Navigator.pushNamed(context, route);
         }
       },
       child: Padding(

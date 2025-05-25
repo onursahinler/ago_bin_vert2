@@ -24,6 +24,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>io.flutter.embedded_views_preview</key>
+    <true/>
+    <key>GMSApiKey</key>
+    <string>AIzaSyBir7TCcuqYtQ4rfkQjYSU63sSkpED1OnY</string>
 	<!-- Bluetooth permissions -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Need Bluetooth permission to connect to HC-05 trash bin sensor</string>

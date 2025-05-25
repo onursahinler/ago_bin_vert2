@@ -1,3 +1,4 @@
+import 'package:ago_bin_vert/map_view_of_trash_bins_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +49,7 @@ class MyApp extends StatelessWidget {
           '/': (context) => LoginPage(),
           '/trash_bins': (context) => TrashBinsListPage(),
           '/notifications': (context) => NotificationsPage(),
-          '/map_view': (context) => NotificationsPage(), // Placeholder until map is implemented
+          '/map_view': (context) => MapViewPage(),
           '/profile': (context) => ProfilePage(),
           '/settings': (context) => SettingsPage(),
           '/bluetooth_logs': (context) => BluetoothLogPage(),
