@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'custom_drawer.dart';
 import 'profile_page.dart';
+import 'package:provider/provider.dart';
+import 'services/bluetooth_service.dart';
 
 class MapViewPage extends StatefulWidget {
   const MapViewPage({Key? key}) : super(key: key);
@@ -20,19 +22,37 @@ class _MapViewPageState extends State<MapViewPage> {
     LatLng(38.429183, 27.134543), //Trash Bin 2
     LatLng(38.436155, 27.197548), //Trash Bin 3
   ];
+  final LatLng _bluetoothBinCoord = LatLng(38.320936, 26.640730);
 
-  Set<Marker> get _markers => _trashBinCoords
-      .asMap()
-      .entries
-      .map((e) => Marker(
-    markerId: MarkerId('bin_${e.key}'),
-    position: e.value,
-    infoWindow: InfoWindow(title: 'Trash Bin ${e.key + 1}'),
-  ))
-      .toSet();
+  Set<Marker> _getMarkers(bool isBluetoothConnected) {
+    final baseMarkers = _trashBinCoords
+        .asMap()
+        .entries
+        .map((e) => Marker(
+      markerId: MarkerId('bin_${e.key}'),
+      position: e.value,
+      infoWindow: InfoWindow(title: 'Trash Bin ${e.key + 1}'),
+    ))
+        .toSet();
+
+    if (isBluetoothConnected) {
+      baseMarkers.add(
+        Marker(
+          markerId: MarkerId('hc05_sensor_bin'),
+          position: _bluetoothBinCoord,
+          infoWindow: InfoWindow(title: 'HC-05 Sensor Bin'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        ),
+      );
+    }
+
+    return baseMarkers;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bluetoothManager = Provider.of<BluetoothManager>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -106,7 +126,7 @@ class _MapViewPageState extends State<MapViewPage> {
                         target: _trashBinCoords.first,
                         zoom: 15,
                       ),
-                      markers: _markers,
+                      markers: _getMarkers(bluetoothManager.isConnected),
                       onMapCreated: (c) => _mapController = c,
                     ),
                     Positioned(

@@ -613,8 +613,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           Text(_debugFilteredScanLog),
                           SizedBox(height: 10),
                           ElevatedButton(
-                            onPressed: () => _connectToMacAddress("00:25:03:01:26:70"),
-                            child: Text("Connect to 00:25:03:01:26:70"),
+                            onPressed: () => _connectToMacAddress("00:24:10:01:1B:CB"),
+                            child: Text("Connect to 00:24:10:01:1B:CB"),
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
                           ),
                           SizedBox(height: 5),
