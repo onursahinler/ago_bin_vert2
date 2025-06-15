@@ -1,9 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'custom_drawer.dart';
+import 'services/notification_service.dart';
 
 class NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+
+    final dynamicNotifications = context.watch<NotificationService>().notifications;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<NotificationService>(context, listen: false).markAllAsRead();
+    });
+
+    final staticNotifications = [
+      NotificationItem(
+        statusColor: Colors.red,
+        title: 'Trash Bin 3',
+        message: 'is nearly Full !!',
+        timestamp: DateTime.now().subtract(Duration(minutes: 15)),
+      ),
+      NotificationItem(
+        statusColor: Colors.green,
+        title: 'Trash Bin 2',
+        message: 'has been Emptied',
+        timestamp: DateTime.now().subtract(Duration(minutes: 45)),
+      ),
+      NotificationItem(
+        statusColor: Colors.amber,
+        title: 'Trash Bin 1',
+        message: 'is %50 Full',
+        timestamp: DateTime.now().subtract(Duration(hours: 1)),
+      ),
+    ];
+
+    // Dinamik + sabit birleştir
+    final allNotifications = [...dynamicNotifications, ...staticNotifications];
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -63,38 +96,31 @@ class NotificationsPage extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: ListView(
-                children: [
-                  // Notification 1 - Red
-                  _buildNotificationItem(
-                    statusColor: Colors.red,
-                    title: 'Trash Bin 3',
-                    message: 'is Full !!',
-                    timeAgo: '15 minutes ago',
-                  ),
-                  SizedBox(height: 15),
-
-                  // Notification 2 - Green
-                  _buildNotificationItem(
-                    statusColor: Colors.green,
-                    title: 'Trash Bin 2',
-                    message: 'has been Emptied',
-                    timeAgo: '45 minutes ago',
-                  ),
-                  SizedBox(height: 15),
-
-                  // Notification 3 - Yellow
-                  _buildNotificationItem(
-                    statusColor: Colors.amber,
-                    title: 'Trash Bin 1',
-                    message: 'is 55% Full',
-                    timeAgo: '1 hour ago',
-                  ),
-                ],
+              child: allNotifications.isEmpty
+                  ? Center(
+                child: Text(
+                  'No notifications yet.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
+                  : ListView.builder(
+                itemCount: allNotifications.length,
+                itemBuilder: (context, index) {
+                  final notif = allNotifications[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _buildNotificationItem(
+                      statusColor: notif.statusColor,
+                      title: notif.title,
+                      message: notif.message,
+                      timeAgo: notif.timeAgo,
+                      read: false,
+                    ),
+                  );
+                },
               ),
             ),
           ),
-          // Bottom slogan
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(vertical: 15),
@@ -119,6 +145,7 @@ class NotificationsPage extends StatelessWidget {
     required String title,
     required String message,
     required String timeAgo,
+    required bool read,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -129,7 +156,6 @@ class NotificationsPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
         child: Row(
           children: [
-            // Colored circle indicator
             Container(
               width: 50,
               height: 50,
@@ -139,43 +165,37 @@ class NotificationsPage extends StatelessWidget {
               ),
             ),
             SizedBox(width: 20),
-            // Notification details
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          Text(
-                            message,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
                       Text(
-                        timeAgo,
+                        title,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           color: Colors.black54,
                         ),
                       ),
+                      Text(
+                        message,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
                     ],
+                  ),
+                  Text(
+                    timeAgo,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                    ),
                   ),
                 ],
               ),

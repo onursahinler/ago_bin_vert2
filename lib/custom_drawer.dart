@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'services/notification_service.dart';
 
 class CustomDrawer extends StatelessWidget {
+  const CustomDrawer({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
+    final notificationCount = context.watch<NotificationService>().unreadCount;
+
     return Container(
       width: MediaQuery.of(context).size.width * 0.75,
       child: Drawer(
@@ -39,43 +45,43 @@ class CustomDrawer extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 20),
-              // Menu items
               _buildMenuItem(
-                  context: context,
-                  icon: Icons.arrow_forward_ios,
-                  title: 'List of Trash Bins',
-                  route: '/trash_bins'
+                context: context,
+                icon: Icons.arrow_forward_ios,
+                title: 'List of Trash Bins',
+                route: '/trash_bins',
               ),
               SizedBox(height: 20),
               _buildMenuItem(
-                  context: context,
-                  icon: Icons.arrow_forward_ios,
-                  title: 'Map View of Trash Bins',
-                  route: '/map_view'
+                context: context,
+                icon: Icons.arrow_forward_ios,
+                title: notificationCount > 0
+                    ? 'Notifications ($notificationCount)'
+                    : 'Notifications',
+                route: '/notifications',
               ),
               SizedBox(height: 20),
               _buildMenuItem(
-                  context: context,
-                  icon: Icons.arrow_forward_ios,
-                  title: 'Notifications',
-                  route: '/notifications'
+                context: context,
+                icon: Icons.arrow_forward_ios,
+                title: 'Map View of Trash Bins',
+                route: '/map_view',
               ),
               SizedBox(height: 20),
               _buildMenuItem(
-                  context: context,
-                  icon: Icons.arrow_forward_ios,
-                  title: 'Settings',
-                  route: '/settings'
+                context: context,
+                icon: Icons.arrow_forward_ios,
+                title: 'Settings',
+                route: '/settings',
               ),
               SizedBox(height: 20),
               _buildMenuItem(
-                  context: context,
-                  icon: Icons.arrow_forward_ios,
-                  title: 'Bluetooth Logs',
-                  route: '/bluetooth_logs'
+                context: context,
+                icon: Icons.arrow_forward_ios,
+                title: 'Bluetooth Logs',
+                route: '/bluetooth_logs',
               ),
               Spacer(),
-              // App name at bottom
               Padding(
                 padding: const EdgeInsets.only(bottom: 30.0),
                 child: Text(

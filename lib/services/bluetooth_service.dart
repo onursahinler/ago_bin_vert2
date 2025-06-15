@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'storage_service.dart';
 import 'log_service.dart';
+import 'notification_service.dart';
 
 class TrashBin {
   final int id;
@@ -31,6 +32,7 @@ class TrashBin {
 }
 
 class BluetoothManager extends ChangeNotifier {
+  final NotificationService notificationService;
   final fb.FlutterBluetoothSerial _bluetooth = fb.FlutterBluetoothSerial.instance;
   fb.BluetoothDevice? _device;
   fb.BluetoothConnection? _connection;
@@ -44,6 +46,8 @@ class BluetoothManager extends ChangeNotifier {
 
   TrashBin? _sensorTrashBin;
   String _connectionStatus = 'Not connected';
+
+  BluetoothManager({required this.notificationService});
 
   TrashBin? get sensorTrashBin => _sensorTrashBin;
   bool get isConnected => _isConnected;
@@ -223,6 +227,11 @@ class BluetoothManager extends ChangeNotifier {
             location: _device?.name ?? _device?.address ?? 'HC-05 Sensor',
             fillPercentage: fillLevel,
             lastUpdated: timeString,
+          );
+
+          notificationService.checkFillLevel(
+            _sensorTrashBin!.location,
+            fillLevel,
           );
 
           LogService.log('Parsed fill level: ${fillLevel.toStringAsFixed(2)}%', type: 'info');

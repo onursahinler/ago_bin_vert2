@@ -1,3 +1,4 @@
+import 'package:ago_bin_vert/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'custom_drawer.dart';
@@ -15,6 +16,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final notificationService = context.watch<NotificationService>();
     final authService = Provider.of<AuthService>(context);
     final userData = authService.userData;
     
@@ -152,13 +154,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Switch(
-                          value: _notificationsEnabled,
+                          value: notificationService.notificationsEnabled,
                           onChanged: (value) {
-                            setState(() {
-                              _notificationsEnabled = value;
-                            });
-                            // Update notification preference in Firestore
-                            authService.updateUserData({
+                            notificationService.setNotificationsEnabled(value); // Bildirim servisinde ayarı güncelle
+                            authService.updateUserData({ // (Opsiyonel) Firestore'da da güncelle
                               'notifications': value,
                             });
                           },
